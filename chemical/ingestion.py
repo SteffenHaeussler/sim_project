@@ -113,7 +113,7 @@ if __name__ == "__main__":
     DB_USER = "postgres"
     DB_PASSWORD = "example"
     TABLE_NAME = "assets"
-    JSON_FILE = "raw/assets.json"
+    JSON_FILE = "assets.json"
 
     # Call the ingestion function
     ingest_assets(JSON_FILE, DB_HOST, DB_NAME, DB_USER, DB_PASSWORD, TABLE_NAME)

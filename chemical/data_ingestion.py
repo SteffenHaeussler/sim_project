@@ -67,7 +67,7 @@ if __name__ == "__main__":
     DB_USER = "postgres"
     DB_PASSWORD = "example"
     TABLE_NAME = "data"
-    DATA_DIR = "raw/data"
+    DATA_DIR = "/Users/steffen/sim_company/chemical/raw/data/"
 
     # Call the ingestion function
     ingest_parquet_data(DATA_DIR, DB_HOST, DB_NAME, DB_USER, DB_PASSWORD, TABLE_NAME)

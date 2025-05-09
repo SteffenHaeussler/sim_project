@@ -1003,5 +1003,14 @@
         "description": "Kühlwasser-Rücklauf",
         "asset_type": "pipe",
         "type": "end"
+    },
+    {
+        "id": "bad9fd87-33dd-4e5d-b8b1-b96dd66c21aa",
+        "name": "COVPIL1-V999-TA99",
+        "tag": "COVPIL1-V999-TA99",
+        "parent_id": null,
+        "description": "",
+        "asset_type": "plant",
+        "type": "plant"
     }
 ]

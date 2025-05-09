@@ -2,19 +2,33 @@ services:
 
   db:
     image: postgres
+    container_name: db
     restart: always
     # set shared memory limit when using docker compose
     shm_size: 128mb
-    # or set shared memory limit when deploy via swarm stack
-    #volumes:
-    #  - type: tmpfs
-    #    target: /dev/shm
-    #    tmpfs:
-    #      size: 134217728 # 128*2^20 bytes = 128Mb
-    environment:
-      POSTGRES_PASSWORD: example
     ports:
       - "5432:5432"
+    network_mode: "host"
     volumes:
       - ./pgdata:/var/lib/postgresql/data  # Persist data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d chemical"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
+  sim_api:
+    image: sim_api:latest
+    container_name: sim_api
+    ports:
+      - "5050:5050"
+    environment:
+      - FASTAPI_ENV=${FASTAPI_ENV:-DEV}
+      - PG_HOST=0.0.0.0
+      - PG_PORT=5432
+      - PG_USER=postgres
+      - PG_PASSWORD=example
+      - PG_DATABASE=chemical
+    depends_on:
+      - db
+    network_mode: "host"
