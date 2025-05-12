@@ -30,7 +30,8 @@ def ingest_parquet_data(
         # Create table if it doesn't exist
         create_table_query = f"""
             CREATE TABLE IF NOT EXISTS {table_name} (
-                id UUID references assets(id),
+                pk_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                asset_id UUID references assets(id),
                 timestamp TIMESTAMP,
                 value FLOAT
             )
@@ -53,7 +54,8 @@ def ingest_parquet_data(
         df = pd.read_parquet(file)
 
         # Ensure the column names match your table (id, timestamp, value)
-        df = df[["id", "timestamp", "value"]]
+        df = df.rename(columns={"id": "asset_id"})
+        df = df[["asset_id", "timestamp", "value"]]  # Keep only necessary cols for now
 
         # Ingest the data into PostgreSQL
         df.to_sql("data", engine, if_exists="append", index=False)
@@ -67,7 +69,7 @@ if __name__ == "__main__":
     DB_USER = "postgres"
     DB_PASSWORD = "example"
     TABLE_NAME = "data"
-    DATA_DIR = "/Users/steffen/sim_company/chemical/raw/data/"
+    DATA_DIR = "raw/data"
 
     # Call the ingestion function
     ingest_parquet_data(DATA_DIR, DB_HOST, DB_NAME, DB_USER, DB_PASSWORD, TABLE_NAME)
