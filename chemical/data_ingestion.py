@@ -20,6 +20,7 @@ def ingest_parquet_data(
         table_name (str): Name of the table to insert data into.
         assets_table_name (str): Name of the assets table.
     """
+    aggregations = ["min", "h", "d"]
     try:
         # Establish database connection
         conn = psycopg2.connect(
@@ -28,17 +29,20 @@ def ingest_parquet_data(
         cur = conn.cursor()
 
         # Create table if it doesn't exist
-        create_table_query = f"""
-            CREATE TABLE IF NOT EXISTS {table_name} (
+        for aggregation in aggregations:
+            new_name = f"{table_name}_{aggregation}"
+            create_table_query = f"""
+            CREATE TABLE IF NOT EXISTS {new_name} (
                 pk_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 asset_id UUID references assets(id),
                 timestamp TIMESTAMP,
                 value FLOAT
+                INDEX asset_timestamp_idx (asset_id, timestamp)
             )
         """
-        cur.execute(create_table_query)
-        conn.commit()
-        conn.close()
+            cur.execute(create_table_query)
+            conn.commit()
+            conn.close()
 
     except Exception as e:
         print(f"Error: {e}")
@@ -50,15 +54,23 @@ def ingest_parquet_data(
     engine = create_engine("postgresql://postgres:example@localhost:5432/chemical")
 
     for file in parquet_files:
+        print(file)
         # Read each Parquet file
         df = pd.read_parquet(file)
 
-        # Ensure the column names match your table (id, timestamp, value)
-        df = df.rename(columns={"id": "asset_id"})
-        df = df[["asset_id", "timestamp", "value"]]  # Keep only necessary cols for now
+        _id = df["id"].unique()[0]
+        df["timestamp"] = pd.to_datetime(df["timestamp"])
 
-        # Ingest the data into PostgreSQL
-        df.to_sql("data", engine, if_exists="append", index=False)
+        df.set_index("timestamp", inplace=True)
+        df = df["value"]
+
+        for aggregation in aggregations:
+            new_name = f"{table_name}_{aggregation}"
+
+            df_agg = df.resample(aggregation).mean().reset_index()
+            df_agg["asset_id"] = _id
+
+            df_agg.to_sql(new_name, engine, if_exists="append", index=False)
 
     print("All Parquet files ingested successfully.")
 
