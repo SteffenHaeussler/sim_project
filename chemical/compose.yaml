@@ -32,3 +32,11 @@ services:
     depends_on:
       - db
     network_mode: "host"
+  sim_ir:
+    image: sim_ir:latest
+    container_name: sim_ir
+    ports:
+      - "5051:5051"
+    environment:
+      - FASTAPI_ENV=${FASTAPI_ENV:-DEV}
+    network_mode: "host"
