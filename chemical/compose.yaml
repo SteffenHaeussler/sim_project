@@ -8,7 +8,6 @@ services:
     shm_size: 128mb
     ports:
       - "5432:5432"
-    network_mode: "host"
     volumes:
       - ./pgdata:/var/lib/postgresql/data  # Persist data
     healthcheck:
@@ -16,6 +15,10 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      client:
+        aliases:
+          - postgres_service
 
   sim_api:
     image: sim_api:latest
@@ -24,14 +27,15 @@ services:
       - "5050:5050"
     environment:
       - FASTAPI_ENV=${FASTAPI_ENV:-DEV}
-      - PG_HOST=0.0.0.0
-      - PG_PORT=5432
-      - PG_USER=postgres
-      - PG_PASSWORD=example
-      - PG_DATABASE=chemical
+    env_file:
+      - /Users/steffen/sim_api/.docker.env
     depends_on:
       - db
-    network_mode: "host"
+    networks:
+      client:
+        aliases:
+          - sim_api_service
+
   sim_ir:
     image: sim_ir:latest
     container_name: sim_ir
@@ -39,7 +43,12 @@ services:
       - "5051:5051"
     environment:
       - FASTAPI_ENV=${FASTAPI_ENV:-DEV}
-    network_mode: "host"
+    env_file:
+      - /Users/steffen/sim_ir/.docker.env
+    networks:
+      client:
+        aliases:
+          - sim_ir_service
 
   qdrant:
     image: qdrant/qdrant:master
@@ -53,3 +62,28 @@ services:
     environment:
       QDRANT__SERVICE__GRPC_PORT: 6334
       QDRANT__SERVICE__HTTP_PORT: 6333
+      QDRANT__LOG_LEVEL: ERROR
+    networks:
+      client:
+        aliases:
+          - qdrant_service
+
+  agentic_ai:
+    image: agentic_ai:latest
+    container_name: agentic_ai
+    ports:
+      - "5055:5055"
+    env_file:
+      - /Users/steffen/agentic_ai/.docker.env
+    restart: unless-stopped
+    networks:
+      backend:
+        aliases:
+          - agentic_ai_service
+      client:
+        aliases:
+          - agentic_ai_client
+
+networks:
+  backend:
+  client:
