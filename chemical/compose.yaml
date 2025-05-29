@@ -72,7 +72,7 @@ services:
     image: agentic_ai:latest
     container_name: agentic_ai
     ports:
-      - "5055:5055"
+      - "5054:5055"
     env_file:
       - /Users/steffen/agentic_ai/.docker.env
     restart: unless-stopped
@@ -83,6 +83,20 @@ services:
       client:
         aliases:
           - agentic_ai_client
+
+  sim_frontend:
+    image: sim_frontend:latest
+    container_name: sim_frontend
+    ports:
+      - "8502:8501"
+    env_file:
+      - /Users/steffen/sim_frontend/.docker.env
+    restart: unless-stopped
+    networks:
+      backend:
+        aliases:
+          - sim_frontend_service
+
 
 networks:
   backend:
