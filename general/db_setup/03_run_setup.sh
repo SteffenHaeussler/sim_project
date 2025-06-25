@@ -201,10 +201,10 @@ main() {
     print_success "Database setup completed successfully!"
     echo
     print_status "Demo user accounts created:"
-    echo "  admin@demo.local     (password: admin123!)     - System Administrator"
-    echo "  manager@demo.local   (password: manager123!)   - Manager"
-    echo "  engineer@demo.local  (password: engineer123!)  - Process Engineer"
-    echo "  operator@demo.local  (password: operator123!)  - Plant Operator"
+    echo "  admin@demoind.com     (password: admin123!)     - System Administrator"
+    echo "  manager@demoind.com   (password: manager123!)   - Manager"
+    echo "  engineer@demoind.com  (password: engineer123!)  - Process Engineer"
+    echo "  operator@demoind.com  (password: operator123!)  - Plant Operator"
     echo
     print_warning "Remember to change these default passwords in production!"
     echo

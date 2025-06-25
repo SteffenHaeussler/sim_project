@@ -79,10 +79,10 @@ CREATE DATABASE organisation;
 
 | Email | Password | Role | Description |
 |-------|----------|------|-------------|
-| admin@demo.local | admin123! | System Administrator | Full system access |
-| manager@demo.local | manager123! | Manager | User management + full monitoring |
-| engineer@demo.local | engineer123! | Process Engineer | Full monitoring + analysis |
-| operator@demo.local | operator123! | Plant Operator | Basic monitoring access |
+| admin@demoind.com | admin123! | System Administrator | Full system access |
+| manager@demoind.com | manager123! | Manager | User management + full monitoring |
+| engineer@demoind.com | engineer123! | Process Engineer | Full monitoring + analysis |
+| operator@demoind.com | operator123! | Plant Operator | Basic monitoring access |
 
 **⚠️ Important**: Change these default passwords in production!
 

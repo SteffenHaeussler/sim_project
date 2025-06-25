@@ -74,7 +74,7 @@ INSERT INTO organizations (id, name, display_name, subscription_tier, max_users,
 (
     '660e8400-e29b-41d4-a716-446655440001',
     'demo',
-    'Demo Solutions',
+    'Demo Industrial Solutions',
     'enterprise',
     100,
     true
@@ -102,8 +102,8 @@ INSERT INTO users (
     is_verified
 ) VALUES (
     '770e8400-e29b-41d4-a716-446655440001',
-    'admin@demo.local',
-    '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewN8S8.QbKjUyK2q',
+    'admin@demo.ai',
+    '$2b$12$YDMApXR2t2hw255XFSn09O7NQ/K831.6Tzg8nBJko3sKCCW5ChpGq',
     'System',
     'Administrator',
     '550e8400-e29b-41d4-a716-446655440001',
@@ -125,8 +125,8 @@ INSERT INTO users (
     is_verified
 ) VALUES (
     '770e8400-e29b-41d4-a716-446655440002',
-    'manager@demo.local',
-    '$2b$12$8K8V2ZQzYZ3yDxQ3W8jP.eBQ3BNp2YjZzZ3R2Q2N8d8Y8x8q8y8z8',
+    'manager@demo.ai',
+    '$2b$12$YDMApXR2t2hw255XFSn09O7NQ/K831.6Tzg8nBJko3sKCCW5ChpGq',
     'John',
     'Manager',
     '550e8400-e29b-41d4-a716-446655440002',
@@ -148,8 +148,8 @@ INSERT INTO users (
     is_verified
 ) VALUES (
     '770e8400-e29b-41d4-a716-446655440003',
-    'engineer@demo.local',
-    '$2b$12$9L9W3ZRzYZ3yDxQ3W8kQ.fCR4COq3ZkZzZ4S3R3O9e9Z9y9r9z9a9',
+    'engineer@demo.ai',
+    '$2b$12$YDMApXR2t2hw255XFSn09O7NQ/K831.6Tzg8nBJko3sKCCW5ChpGq',
     'Jane',
     'Smith',
     '550e8400-e29b-41d4-a716-446655440003',
@@ -171,8 +171,8 @@ INSERT INTO users (
     is_verified
 ) VALUES (
     '770e8400-e29b-41d4-a716-446655440004',
-    'operator@demo.local',
-    '$2b$12$0M0X4ZSzYZ3yDxQ3W8lR.gDS5DPr4ZlZzZ5T4S4P0f0a0z0s0a0b0',
+    'operator@demo.ai',
+    '$2b$12$YDMApXR2t2hw255XFSn09O7NQ/K831.6Tzg8nBJko3sKCCW5ChpGq',
     'Mike',
     'Operator',
     '550e8400-e29b-41d4-a716-446655440004',
