@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Database setup script for industrial process monitoring application
-# This script initializes the PostgreSQL database with tables and seed data
+# Simplified database setup script for industrial process monitoring application
+# This script initializes the PostgreSQL database with simplified tables and Demo organisation
 
 # Colors for output
 RED='\033[0;31m'
@@ -10,11 +10,12 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Database connection parameters
-DB_HOST=${DB_HOST:-localhost}
-DB_PORT=${DB_PORT:-5432}
-DB_NAME=${DB_NAME:-organisation}
-DB_USER=${DB_USER:-postgres}
+# Database connection parameters (get from .env file)
+DB_HOST=${auth_host:-localhost}
+DB_PORT=${auth_port:-5432}
+DB_NAME=${auth_db:-organisation}
+DB_USER=${auth_user:-postgres}
+DB_PASSWORD=${auth_password:-example}
 
 # Function to print colored output
 print_status() {
@@ -41,7 +42,7 @@ check_postgres() {
         print_success "PostgreSQL is running and accepting connections"
     else
         print_error "PostgreSQL is not running or not accessible at $DB_HOST:$DB_PORT"
-        print_status "Make sure your PostgreSQL container is running: docker compose up -d db"
+        print_status "Make sure your PostgreSQL server is running"
         exit 1
     fi
 }
@@ -51,12 +52,12 @@ create_database() {
     print_status "Creating database '$DB_NAME' if it doesn't exist..."
 
     # Check if database exists
-    DB_EXISTS=$(psql -h $DB_HOST -p $DB_PORT -U $DB_USER -tAc "SELECT 1 FROM pg_database WHERE datname='$DB_NAME'" 2>/dev/null)
+    DB_EXISTS=$(PGPASSWORD=$DB_PASSWORD psql -h $DB_HOST -p $DB_PORT -U $DB_USER -tAc "SELECT 1 FROM pg_database WHERE datname='$DB_NAME'" 2>/dev/null)
 
     if [ "$DB_EXISTS" = "1" ]; then
         print_warning "Database '$DB_NAME' already exists"
     else
-        createdb -h $DB_HOST -p $DB_PORT -U $DB_USER $DB_NAME
+        PGPASSWORD=$DB_PASSWORD createdb -h $DB_HOST -p $DB_PORT -U $DB_USER $DB_NAME
         if [ $? -eq 0 ]; then
             print_success "Database '$DB_NAME' created successfully"
         else
@@ -78,7 +79,7 @@ run_sql_script() {
         exit 1
     fi
 
-    psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME -f "$script_file"
+    PGPASSWORD=$DB_PASSWORD psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME -f "$script_file"
 
     if [ $? -eq 0 ]; then
         print_success "$description completed"
@@ -88,32 +89,14 @@ run_sql_script() {
     fi
 }
 
-# Backup existing database
-backup_database() {
-    if [ "$1" = "--backup" ]; then
-        print_status "Creating backup of existing database..."
-        local backup_file="backup_${DB_NAME}_$(date +%Y%m%d_%H%M%S).sql"
-
-        pg_dump -h $DB_HOST -p $DB_PORT -U $DB_USER $DB_NAME > "$backup_file" 2>/dev/null
-
-        if [ $? -eq 0 ]; then
-            print_success "Database backed up to: $backup_file"
-        else
-            print_warning "Failed to create backup (database might not exist yet)"
-        fi
-    fi
-}
-
 # Check for required environment variables
 check_environment() {
     print_status "Checking environment variables..."
 
-    if [ -z "$PGPASSWORD" ]; then
-        print_warning "PGPASSWORD environment variable not set"
-        echo -n "Enter PostgreSQL password for user '$DB_USER': "
-        read -s password
-        echo
-        export PGPASSWORD=$password
+    if [ -z "$DB_PASSWORD" ]; then
+        print_error "Database password not found in environment"
+        print_status "Make sure auth_password is set in your .env file"
+        exit 1
     fi
 
     print_status "Using database connection:"
@@ -126,21 +109,16 @@ check_environment() {
 # Main execution
 main() {
     echo "=============================================="
-    echo "  Database Setup for Industrial Process"
-    echo "  Monitoring Authentication System"
+    echo "  Simplified Database Setup for"
+    echo "  Industrial Process Monitoring"
     echo "=============================================="
     echo
 
     # Parse command line arguments
-    BACKUP_OPTION=""
     FORCE_OPTION=""
 
     while [[ $# -gt 0 ]]; do
         case $1 in
-            --backup)
-                BACKUP_OPTION="--backup"
-                shift
-                ;;
             --force)
                 FORCE_OPTION="--force"
                 shift
@@ -149,16 +127,15 @@ main() {
                 echo "Usage: $0 [OPTIONS]"
                 echo ""
                 echo "Options:"
-                echo "  --backup    Create a backup before running setup"
                 echo "  --force     Skip confirmation prompts"
                 echo "  --help      Show this help message"
                 echo ""
-                echo "Environment variables:"
-                echo "  DB_HOST     Database host (default: localhost)"
-                echo "  DB_PORT     Database port (default: 5432)"
-                echo "  DB_NAME     Database name (default: sim_frontend_db)"
-                echo "  DB_USER     Database user (default: postgres)"
-                echo "  PGPASSWORD  PostgreSQL password"
+                echo "Environment variables (from .env file):"
+                echo "  auth_host     Database host"
+                echo "  auth_port     Database port"
+                echo "  auth_db       Database name"
+                echo "  auth_user     Database user"
+                echo "  auth_password Database password"
                 exit 0
                 ;;
             *)
@@ -178,7 +155,7 @@ main() {
     # Confirmation prompt
     if [ "$FORCE_OPTION" != "--force" ]; then
         echo
-        print_warning "This will create/modify the database structure and add seed data."
+        print_warning "This will create/modify the database structure and add Demo organisation with admin user."
         echo -n "Continue? (y/N): "
         read -r response
         if [[ ! "$response" =~ ^[Yy]$ ]]; then
@@ -188,25 +165,22 @@ main() {
     fi
 
     echo
-    backup_database $BACKUP_OPTION
     create_database
 
     echo
-    run_sql_script "$SCRIPT_DIR/01_init_database.sql" "Creating database tables and functions"
+    run_sql_script "$SCRIPT_DIR/01_init_database.sql" "Creating simplified database tables"
 
     echo
-    run_sql_script "$SCRIPT_DIR/02_seed_data.sql" "Inserting seed data and demo users"
+    run_sql_script "$SCRIPT_DIR/02_seed_data.sql" "Inserting Demo organisation and admin user"
 
     echo
-    print_success "Database setup completed successfully!"
+    print_success "Simplified database setup completed successfully!"
     echo
-    print_status "Demo user accounts created:"
-    echo "  admin@demoind.com     (password: admin123!)     - System Administrator"
-    echo "  manager@demoind.com   (password: manager123!)   - Manager"
-    echo "  engineer@demoind.com  (password: engineer123!)  - Process Engineer"
-    echo "  operator@demoind.com  (password: operator123!)  - Plant Operator"
+    print_status "Demo user account created:"
+    echo "  admin@demo.ai (password: admin123!) - Admin User"
+    echo "  Organisation: Demo (max 50 users)"
     echo
-    print_warning "Remember to change these default passwords in production!"
+    print_warning "Remember to change the default password in production!"
     echo
 }
 

@@ -1,166 +1,96 @@
--- Database initialization script for industrial process monitoring application
--- This script creates the core authentication and user management tables
+-- Simplified database initialization script for industrial process monitoring application
+-- This script creates the simplified authentication and usage tracking tables
 
 -- Create database (run this manually if needed)
--- CREATE DATABASE sim_frontend_db;
+-- CREATE DATABASE organisation;
 
 -- Connect to the database
--- \c sim_frontend_db;
+-- \c organisation;
 
 -- Enable UUID extension for generating UUIDs
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- Organizations table (for multi-tenancy)
-CREATE TABLE organizations (
+-- Organisations table (simplified for user limits and billing)
+CREATE TABLE organisation (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(255) NOT NULL UNIQUE,
     display_name VARCHAR(255) NOT NULL,
-    subscription_tier VARCHAR(50) DEFAULT 'basic' CHECK (subscription_tier IN ('basic', 'professional', 'enterprise')),
-    max_users INTEGER DEFAULT 10,
+    max_users INTEGER DEFAULT 50,
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    -- Billing/invoicing info
+    billing_email VARCHAR(255),
+    billing_company VARCHAR(255)
 );
 
--- Roles table
-CREATE TABLE roles (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    name VARCHAR(50) NOT NULL UNIQUE,
-    display_name VARCHAR(100) NOT NULL,
-    description TEXT,
-    permissions JSONB DEFAULT '{}',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
--- Users table
+-- Users table (simplified)
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     email VARCHAR(255) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
     first_name VARCHAR(100),
     last_name VARCHAR(100),
-    role_id UUID NOT NULL REFERENCES roles(id),
-    organization_id UUID NOT NULL REFERENCES organizations(id),
-    is_active BOOLEAN DEFAULT true,
-    is_verified BOOLEAN DEFAULT false,
-    last_login TIMESTAMP WITH TIME ZONE,
-    failed_login_attempts INTEGER DEFAULT 0,
-    locked_until TIMESTAMP WITH TIME ZONE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
--- Sessions table (for JWT token tracking and session management)
-CREATE TABLE user_sessions (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    token_hash VARCHAR(255) NOT NULL UNIQUE,
-    refresh_token_hash VARCHAR(255),
-    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
-    refresh_expires_at TIMESTAMP WITH TIME ZONE,
-    ip_address INET,
-    user_agent TEXT,
-    is_active BOOLEAN DEFAULT true,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    last_used_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
--- Audit logs table (for compliance and security)
-CREATE TABLE audit_logs (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES users(id),
-    organization_id UUID REFERENCES organizations(id),
-    action VARCHAR(100) NOT NULL,
-    resource VARCHAR(100),
-    resource_id VARCHAR(255),
-    details JSONB DEFAULT '{}',
-    ip_address INET,
-    user_agent TEXT,
-    success BOOLEAN DEFAULT true,
-    error_message TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
--- Password reset tokens table
-CREATE TABLE password_reset_tokens (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    token_hash VARCHAR(255) NOT NULL UNIQUE,
-    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
-    used_at TIMESTAMP WITH TIME ZONE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
--- API keys table (for programmatic access)
-CREATE TABLE api_keys (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    organization_id UUID NOT NULL REFERENCES organizations(id),
-    name VARCHAR(255) NOT NULL,
-    key_hash VARCHAR(255) NOT NULL UNIQUE,
-    permissions JSONB DEFAULT '{}',
-    last_used_at TIMESTAMP WITH TIME ZONE,
-    expires_at TIMESTAMP WITH TIME ZONE,
+    organisation_id UUID NOT NULL REFERENCES organisation(id),
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- API usage logs table (for billing and invoicing)
+CREATE TABLE api_usage_logs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id),
+    organisation_id UUID NOT NULL REFERENCES organisation(id),
+    -- API call details for billing
+    endpoint VARCHAR(255) NOT NULL,
+    method VARCHAR(10) NOT NULL,
+    status_code VARCHAR(10),
+    -- Billing details
+    timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    duration_ms VARCHAR(50),
+    -- Optional: detailed request info for debugging
+    query_params VARCHAR(1000)
 );
 
 -- Indexes for performance
 CREATE INDEX idx_users_email ON users(email);
-CREATE INDEX idx_users_organization_id ON users(organization_id);
-CREATE INDEX idx_users_role_id ON users(role_id);
-CREATE INDEX idx_user_sessions_user_id ON user_sessions(user_id);
-CREATE INDEX idx_user_sessions_token_hash ON user_sessions(token_hash);
-CREATE INDEX idx_user_sessions_expires_at ON user_sessions(expires_at);
-CREATE INDEX idx_audit_logs_user_id ON audit_logs(user_id);
-CREATE INDEX idx_audit_logs_created_at ON audit_logs(created_at);
-CREATE INDEX idx_audit_logs_action ON audit_logs(action);
-CREATE INDEX idx_password_reset_tokens_user_id ON password_reset_tokens(user_id);
-CREATE INDEX idx_password_reset_tokens_token_hash ON password_reset_tokens(token_hash);
-CREATE INDEX idx_api_keys_user_id ON api_keys(user_id);
-CREATE INDEX idx_api_keys_key_hash ON api_keys(key_hash);
+CREATE INDEX idx_users_organisation_id ON users(organisation_id);
+CREATE INDEX idx_api_usage_logs_user_id ON api_usage_logs(user_id);
+CREATE INDEX idx_api_usage_logs_organisation_id ON api_usage_logs(organisation_id);
+CREATE INDEX idx_api_usage_logs_timestamp ON api_usage_logs(timestamp);
+CREATE INDEX idx_api_usage_logs_endpoint ON api_usage_logs(endpoint);
 
--- Function to update updated_at timestamp
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
+-- Function to generate usage reports for billing
+CREATE OR REPLACE FUNCTION get_monthly_usage_report(
+    org_id UUID,
+    report_month DATE DEFAULT DATE_TRUNC('month', CURRENT_DATE)
+)
+RETURNS TABLE(
+    endpoint VARCHAR,
+    call_count BIGINT,
+    avg_duration_ms NUMERIC,
+    total_calls_for_month BIGINT
+) AS $$
 BEGIN
-    NEW.updated_at = CURRENT_TIMESTAMP;
-    RETURN NEW;
-END;
-$$ language 'plpgsql';
-
--- Triggers for auto-updating updated_at columns
-CREATE TRIGGER update_organizations_updated_at BEFORE UPDATE ON organizations FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
--- Function to clean up expired sessions
-CREATE OR REPLACE FUNCTION cleanup_expired_sessions()
-RETURNS INTEGER AS $$
-DECLARE
-    deleted_count INTEGER;
-BEGIN
-    DELETE FROM user_sessions WHERE expires_at < CURRENT_TIMESTAMP;
-    GET DIAGNOSTICS deleted_count = ROW_COUNT;
-    RETURN deleted_count;
+    RETURN QUERY
+    SELECT
+        api_usage_logs.endpoint,
+        COUNT(*) as call_count,
+        ROUND(AVG(CAST(api_usage_logs.duration_ms AS NUMERIC)), 2) as avg_duration_ms,
+        (SELECT COUNT(*) FROM api_usage_logs al2
+         WHERE al2.organisation_id = org_id
+         AND al2.timestamp >= report_month
+         AND al2.timestamp < report_month + INTERVAL '1 month') as total_calls_for_month
+    FROM api_usage_logs
+    WHERE organisation_id = org_id
+    AND timestamp >= report_month
+    AND timestamp < report_month + INTERVAL '1 month'
+    GROUP BY api_usage_logs.endpoint
+    ORDER BY call_count DESC;
 END;
 $$ LANGUAGE plpgsql;
 
--- Function to clean up expired password reset tokens
-CREATE OR REPLACE FUNCTION cleanup_expired_password_tokens()
-RETURNS INTEGER AS $$
-DECLARE
-    deleted_count INTEGER;
-BEGIN
-    DELETE FROM password_reset_tokens WHERE expires_at < CURRENT_TIMESTAMP;
-    GET DIAGNOSTICS deleted_count = ROW_COUNT;
-    RETURN deleted_count;
-END;
-$$ LANGUAGE plpgsql;
-
-COMMENT ON TABLE organizations IS 'Multi-tenant organizations for commercial use';
-COMMENT ON TABLE roles IS 'User roles with permissions for industrial process monitoring';
-COMMENT ON TABLE users IS 'Application users with authentication and profile information';
-COMMENT ON TABLE user_sessions IS 'JWT session tracking and management';
-COMMENT ON TABLE audit_logs IS 'Security and compliance audit trail';
-COMMENT ON TABLE password_reset_tokens IS 'Secure password reset token management';
-COMMENT ON TABLE api_keys IS 'API keys for programmatic access to the system';
+-- Comments for documentation
+COMMENT ON TABLE organisation IS 'Organisations for user management and billing';
+COMMENT ON TABLE users IS 'Application users with simplified authentication';
+COMMENT ON TABLE api_usage_logs IS 'API call tracking for billing and invoicing';
+COMMENT ON FUNCTION get_monthly_usage_report IS 'Generate monthly usage reports for billing';

@@ -1,46 +1,46 @@
-# Database Setup Scripts
+# Simplified Database Setup Scripts
 
-This directory contains scripts to initialize the PostgreSQL database for the industrial process monitoring application with authentication and user management.
+This directory contains simplified database setup scripts for the industrial process monitoring application with basic authentication and API usage tracking for billing.
 
 ## Files
 
-- `01_init_database.sql` - Creates all database tables, indexes, and functions
-- `02_seed_data.sql` - Inserts default roles, demo organization, and test users
-- `03_run_setup.sh` - Automated setup script that runs everything
-- `README.md` - This documentation
+### Database Scripts
+- `01_init_database_simple.sql` - Creates simplified database tables (3 tables only)
+- `02_seed_data_simple.sql` - Inserts Demo organization and admin user
+- `03_run_setup_simple.sh` - Automated setup script
 
-## Quick Start
+### Legacy Scripts (Complex)
+- `01_init_database.sql` - Original complex database schema (8+ tables)
+- `02_seed_data.sql` - Original seed data with roles and multiple users
+- `03_run_setup.sh` - Original setup script
 
-1. **Make sure PostgreSQL is running** (via docker compose):
+## Simplified Database Schema
+
+### Tables Created:
+1. **organizations** - Company info and user limits for billing
+2. **users** - Basic user authentication 
+3. **api_usage_logs** - API call tracking for invoicing
+
+### Demo Data:
+- **Organization**: "Demo" (max 50 users)
+- **Admin User**: admin@demo.ai (password: admin123!)
+
+## Quick Setup
+
+1. **Ensure PostgreSQL is running**
+2. **Set environment variables in .env file:**
    ```bash
-   docker compose up -d db
+   auth_host=localhost
+   auth_port=5432
+   auth_db=organisation
+   auth_user=postgres
+   auth_password=your_password
    ```
 
-2. **Run the setup script**:
+3. **Run the setup script:**
    ```bash
-   ./scripts/03_run_setup.sh
+   ./scripts/03_run_setup_simple.sh
    ```
-
-3. **Or run with options**:
-   ```bash
-   # Create backup before setup
-   ./scripts/03_run_setup.sh --backup
-
-   # Skip confirmation prompts
-   ./scripts/03_run_setup.sh --force
-   ```
-
-## Environment Variables
-
-The setup script uses these environment variables (all optional):
-
-```bash
-export DB_HOST=localhost      # Database host
-export DB_PORT=5432          # Database port
-export DB_NAME=organisation # Database name
-export DB_USER=postgres      # Database user
-export PGPASSWORD= # PostgreSQL password
-```
 
 ## Manual Setup
 
@@ -52,101 +52,61 @@ psql -h localhost -p 5432 -U postgres
 
 # Create database
 CREATE DATABASE organisation;
-
-# Connect to the new database
 \c organisation;
 
-# Run the init script
-\i scripts/01_init_database.sql
-
-# Run the seed data script
-\i scripts/02_seed_data.sql
+# Run the scripts
+\i scripts/01_init_database_simple.sql
+\i scripts/02_seed_data_simple.sql
 ```
 
-## Database Schema
+## Usage Tracking for Billing
 
-### Core Tables
+The `api_usage_logs` table tracks every API call with:
+- User and organization info
+- Endpoint and method
+- Timestamp and duration
+- Query parameters (optional)
 
-- **organizations** - Multi-tenant organizations for commercial use
-- **roles** - User roles with permissions for industrial process monitoring
-- **users** - Application users with authentication and profile information
-- **user_sessions** - JWT session tracking and management
-- **audit_logs** - Security and compliance audit trail
-- **password_reset_tokens** - Secure password reset token management
-- **api_keys** - API keys for programmatic access
-
-### Demo Users Created
-
-| Email | Password | Role | Description |
-|-------|----------|------|-------------|
-| admin@demoind.com | admin123! | System Administrator | Full system access |
-| manager@demoind.com | manager123! | Manager | User management + full monitoring |
-| engineer@demoind.com | engineer123! | Process Engineer | Full monitoring + analysis |
-| operator@demoind.com | operator123! | Plant Operator | Basic monitoring access |
-
-**⚠️ Important**: Change these default passwords in production!
-
-## Role Permissions
-
-### Administrator
-- Full system access
-- User and organization management
-- System configuration
-- Audit log access
-
-### Manager
-- User management within organization
-- Full monitoring and asset access
-- Report generation and export
-- API read/write access
-
-### Process Engineer
-- Full monitoring and analysis capabilities
-- Asset read/write access
-- Report generation and export
-- API read/write access
-
-### Plant Operator
-- Read-only monitoring access
-- Alert acknowledgment
-- Basic reporting
-- API read access
-
-### Viewer
-- Read-only access to monitoring data
-- Basic reporting
-
-## Maintenance Functions
-
-The database includes automated maintenance functions:
+### Example Billing Queries:
 
 ```sql
--- Clean up expired sessions (run periodically)
-SELECT cleanup_expired_sessions();
+-- Monthly usage by organization
+SELECT COUNT(*) as total_calls, 
+       endpoint,
+       AVG(CAST(duration_ms AS NUMERIC)) as avg_duration
+FROM api_usage_logs 
+WHERE organization_id = 'org-uuid'
+AND timestamp >= '2025-01-01'
+AND timestamp < '2025-02-01'
+GROUP BY endpoint;
 
--- Clean up expired password reset tokens
-SELECT cleanup_expired_password_tokens();
+-- Usage report function
+SELECT * FROM get_monthly_usage_report('org-uuid', '2025-01-01');
 ```
 
-## Security Features
+## Login Credentials
 
-- UUID primary keys for all tables
-- Bcrypt password hashing
-- JWT token tracking with expiration
-- Session management with refresh tokens
-- Audit logging for compliance
-- Role-based permissions (JSONB)
-- Account lockout after failed attempts
-- Secure password reset workflow
+After setup, you can login with:
+- **Email**: admin@demo.ai
+- **Password**: admin123!
 
-## Next Steps
+**⚠️ Important**: Change the default password in production!
 
-After setting up the database:
+## Environment Variables
 
-1. Install Python dependencies for SQLAlchemy and authentication
-2. Create database models in your FastAPI application
-3. Implement JWT authentication middleware
-4. Add login/logout endpoints
-5. Protect existing routes with authentication decorators
+The scripts read database connection info from these environment variables:
+- `auth_host` - Database host (default: localhost)
+- `auth_port` - Database port (default: 5432) 
+- `auth_db` - Database name (default: organisation)
+- `auth_user` - Database user (default: postgres)
+- `auth_password` - Database password (required)
 
-The database is now ready for integration with your FastAPI application!
+## Billing Integration
+
+The simplified schema is designed for easy billing integration:
+- Track API usage per organization
+- Generate monthly/usage reports
+- Monitor API performance
+- Export billing data
+
+Perfect for SaaS industrial monitoring applications!
