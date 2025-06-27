@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Simplified database setup script for industrial process monitoring application
-# This script initializes the PostgreSQL database with simplified tables and Demo organisation
+# Complete database setup script for industrial process monitoring application
+# This script handles both fresh database initialization and migration of existing databases
 
 # Colors for output
 RED='\033[0;31m'
@@ -89,6 +89,22 @@ run_sql_script() {
     fi
 }
 
+# Check if this is a fresh database or needs migration
+check_database_type() {
+    print_status "Checking database state..."
+    
+    # Check if users table exists to determine if this is a fresh database
+    USERS_TABLE_EXISTS=$(PGPASSWORD=$DB_PASSWORD psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME -tAc "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'users');" 2>/dev/null)
+    
+    if [ "$USERS_TABLE_EXISTS" = "t" ]; then
+        print_warning "Existing database detected - will run migration script"
+        DATABASE_TYPE="migration"
+    else
+        print_status "Fresh database detected - will run full initialization"
+        DATABASE_TYPE="fresh"
+    fi
+}
+
 # Check for required environment variables
 check_environment() {
     print_status "Checking environment variables..."
@@ -126,6 +142,10 @@ main() {
             --help)
                 echo "Usage: $0 [OPTIONS]"
                 echo ""
+                echo "This script automatically detects if you have a fresh or existing database:"
+                echo "  - Fresh database: Runs full initialization + seed data"
+                echo "  - Existing database: Runs migration script safely"
+                echo ""
                 echo "Options:"
                 echo "  --force     Skip confirmation prompts"
                 echo "  --help      Show this help message"
@@ -152,10 +172,20 @@ main() {
     check_environment
     check_postgres
 
+    echo
+    create_database
+    
+    echo
+    check_database_type
+
     # Confirmation prompt
     if [ "$FORCE_OPTION" != "--force" ]; then
         echo
-        print_warning "This will create/modify the database structure and add Demo organisation with admin user."
+        if [ "$DATABASE_TYPE" = "fresh" ]; then
+            print_warning "This will create complete database structure and add sample data."
+        else
+            print_warning "This will migrate your existing database to add new tracking features."
+        fi
         echo -n "Continue? (y/N): "
         read -r response
         if [[ ! "$response" =~ ^[Yy]$ ]]; then
@@ -165,22 +195,32 @@ main() {
     fi
 
     echo
-    create_database
-
-    echo
-    run_sql_script "$SCRIPT_DIR/01_init_database.sql" "Creating simplified database tables"
-
-    echo
-    run_sql_script "$SCRIPT_DIR/02_seed_data.sql" "Inserting Demo organisation and admin user"
-
-    echo
-    print_success "Simplified database setup completed successfully!"
-    echo
-    print_status "Demo user account created:"
-    echo "  admin@demo.ai (password: admin123!) - Admin User"
-    echo "  Organisation: Demo (max 50 users)"
-    echo
-    print_warning "Remember to change the default password in production!"
+    if [ "$DATABASE_TYPE" = "fresh" ]; then
+        # Fresh database - run full initialization
+        run_sql_script "$SCRIPT_DIR/01_database_init_complete.sql" "Creating complete database structure"
+        
+        echo
+        run_sql_script "$SCRIPT_DIR/02_seed_data_complete.sql" "Inserting sample data and test users"
+        
+        echo
+        print_success "Fresh database setup completed successfully!"
+        echo
+        print_status "Test user accounts created:"
+        echo "  admin@company.com (password: admin123) - Admin User"
+        echo "  user@company.com (password: user123) - Test User"
+        echo "  Organisation: Default Organisation (max 100 users)"
+        echo
+        print_warning "Remember to change the default passwords in production!"
+    else
+        # Existing database - run migration
+        run_sql_script "$SCRIPT_DIR/03_database_migration.sql" "Migrating existing database structure"
+        
+        echo
+        print_success "Database migration completed successfully!"
+        echo
+        print_status "Your existing data has been preserved."
+        print_status "New tracking and rating features have been added."
+    fi
     echo
 }
 
