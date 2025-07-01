@@ -64,6 +64,7 @@ CREATE TABLE api_usage_logs (
     duration_ms VARCHAR(50),
     -- Session and user context
     session_id VARCHAR(255),
+    request_id VARCHAR(255),
     event_id VARCHAR(255),
     user_agent VARCHAR(500),
     ip_address VARCHAR(45),  -- IPv4/IPv6 address
