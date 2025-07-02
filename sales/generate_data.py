@@ -1438,6 +1438,12 @@ class SalesDataGenerator:
             
             self.logger.info(f"Creating relationships for {len(products_with_real_ids)} products and {len(suppliers_with_real_ids)} suppliers")
             
+            # Create territory lookup by real database ID
+            territory_lookup = {}
+            for territory_info in self.cache['territories'].values():
+                if 'id' in territory_info:
+                    territory_lookup[territory_info['id']] = territory_info
+            
             for product in products_with_real_ids:
                 # Each product has 1-3 suppliers
                 num_suppliers = random.randint(1, min(3, len(suppliers_with_real_ids)))
@@ -1445,15 +1451,12 @@ class SalesDataGenerator:
                 
                 for i, supplier in enumerate(product_suppliers_list):
                     # Safely get territory currency
-                    try:
-                        territory_id = supplier['territory_id']
-                        if territory_id not in self.cache['territories']:
-                            self.logger.warning(f"Territory {territory_id} not found for supplier {supplier['id']}")
-                            continue
-                        currency = self.cache['territories'][territory_id]['currency']
-                    except (KeyError, TypeError) as e:
-                        self.logger.warning(f"Could not get currency for supplier {supplier.get('id', 'unknown')}: {e}")
-                        currency = 'USD'  # Fallback currency
+                    territory_id = supplier.get('territory_id')
+                    if territory_id in territory_lookup:
+                        currency = territory_lookup[territory_id]['currency']
+                    else:
+                        self.logger.warning(f"Territory {territory_id} not found for supplier {supplier.get('id', 'unknown')}, using USD")
+                        currency = 'USD'
                     
                     # Base cost varies by supplier
                     base_cost = random.uniform(50, 2000)
@@ -1535,6 +1538,12 @@ class SalesDataGenerator:
         self.cursor.execute("SELECT cost_type_id, name FROM cost_types;")
         cost_types = {name: id for id, name in self.cursor.fetchall()}
         
+        # Create territory lookup by real database ID
+        territory_lookup = {}
+        for territory_info in self.cache['territories'].values():
+            if 'id' in territory_info:
+                territory_lookup[territory_info['id']] = territory_info
+        
         for po_num in range(1, self.config.purchase_orders + 1):
             supplier = random.choice(suppliers_with_ids)
             employee = random.choice(po_employees)
@@ -1581,7 +1590,7 @@ class SalesDataGenerator:
                 'expected_delivery_date': expected_delivery,
                 'received_date': received_date,
                 'status': status,
-                'currency_code': self.cache['territories'][supplier['territory_id']]['currency'],
+                'currency_code': territory_lookup.get(supplier['territory_id'], {}).get('currency', 'USD'),
                 'notes': f"Purchase order for {supplier['company_name']}"
             }
             
@@ -1917,6 +1926,14 @@ class SalesDataGenerator:
             if not products_with_ids:
                 self.logger.error("No products with real IDs found for sales generation")
                 return
+            
+            # Create territory lookup by real database ID
+            territory_lookup = {}
+            for territory_info in self.cache['territories'].values():
+                if 'id' in territory_info:
+                    territory_lookup[territory_info['id']] = territory_info
+            
+            self.logger.info(f"Built territory lookup for {len(territory_lookup)} territories")
         
         except Exception as e:
             self.logger.error(f"Error during sales data preparation: {e}")
@@ -1986,10 +2003,11 @@ class SalesDataGenerator:
                     shipping_method = random.choice(shipping_methods) if shipping_methods else None
                     
                     # Currency based on customer territory - safely get with fallback
-                    try:
-                        currency = self.cache['territories'][customer['territory_id']]['currency']
-                    except KeyError:
-                        self.logger.warning(f"Territory {customer.get('territory_id', 'unknown')} not found for customer {customer.get('real_id', 'unknown')}, using USD")
+                    territory_id = customer.get('territory_id')
+                    if territory_id in territory_lookup:
+                        currency = territory_lookup[territory_id]['currency']
+                    else:
+                        self.logger.warning(f"Territory {territory_id} not found for customer {customer.get('real_id', 'unknown')}, using USD")
                         currency = 'USD'
             
                     # Generate order lines
@@ -2279,6 +2297,12 @@ class SalesDataGenerator:
         # Generate sales targets for employees
         self.logger.info("Generating sales targets...")
         
+        # Create territory lookup by real database ID
+        territory_lookup = {}
+        for territory_info in self.cache['territories'].values():
+            if 'id' in territory_info:
+                territory_lookup[territory_info['id']] = territory_info
+        
         sales_targets = []
         sales_employees = [e for e in self.cache['employees'].values() 
                           if 'real_id' in e and 'Sales' in str(e.get('role_id', ''))]
@@ -2286,7 +2310,7 @@ class SalesDataGenerator:
         for employee in sales_employees:
             # Annual targets for current and next year
             for target_year in [self.config.end_date.year, self.config.end_date.year + 1]:
-                territory_currency = self.cache['territories'][employee['territory_id']]['currency']
+                territory_currency = territory_lookup.get(employee['territory_id'], {}).get('currency', 'USD')
                 
                 # Target amount based on employee level and territory
                 base_target = random.uniform(100000, 1000000)
