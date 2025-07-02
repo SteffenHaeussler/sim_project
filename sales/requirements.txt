@@ -1,0 +1,13 @@
+# Database connectivity
+psycopg2-binary>=2.9.0
+
+# Environment management
+python-dotenv>=0.19.0
+
+# Data generation (for future use)
+faker>=18.0.0
+numpy>=1.21.0
+pandas>=1.5.0
+
+# Optional: For advanced data generation
+scipy>=1.9.0
