@@ -71,6 +71,29 @@ def create_evaluation_database():
             conn.close()
 
 
+def migrate_metadata_columns(engine):
+    """Rename metadata columns to meta_data if they exist."""
+    
+    migrations = [
+        ("evaluation_runs", "metadata", "meta_data"),
+        ("test_results", "metadata", "meta_data")
+    ]
+    
+    with engine.begin() as conn:
+        for table_name, old_col, new_col in migrations:
+            # Check if old column exists
+            result = conn.execute(text("""
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name = :table_name AND column_name = :old_col
+            """), {"table_name": table_name, "old_col": old_col})
+            
+            if result.fetchone():
+                # Rename column
+                conn.execute(text(f'ALTER TABLE {table_name} RENAME COLUMN {old_col} TO {new_col}'))
+                logger.info(f"Renamed {table_name}.{old_col} to {new_col}")
+
+
 def create_evaluation_tables():
     """Create evaluation tables using SQLAlchemy."""
     
@@ -86,6 +109,12 @@ def create_evaluation_tables():
     
     # Create engine
     engine = create_engine(connection_string)
+    
+    # First, try to migrate existing columns if needed
+    try:
+        migrate_metadata_columns(engine)
+    except Exception as e:
+        logger.warning(f"Migration check failed (this is OK for new installations): {e}")
     
     # SQL for creating tables
     create_tables_sql = """
@@ -109,7 +138,7 @@ def create_evaluation_tables():
         model_temperature FLOAT,
         prompt_version VARCHAR(50),
         fixtures_used TEXT[],
-        metadata JSONB,
+        meta_data JSONB,
         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
@@ -128,7 +157,7 @@ def create_evaluation_tables():
         judge_scores JSONB,
         judge_reasoning TEXT,
         error_message TEXT,
-        metadata JSONB,
+        meta_data JSONB,
         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
     
