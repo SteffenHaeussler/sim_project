@@ -253,6 +253,7 @@ class ProductGenerator(BaseGenerator):
                 'name': product_name.strip(),
                 'sku': sku,
                 'category_id': category_id,
+                'category_name': category_name,
                 'specifications': json.dumps(specs)
             }
             
@@ -316,8 +317,33 @@ class ProductGenerator(BaseGenerator):
                 
             real_id = prod['real_id']
             
-            # Generate prices in multiple currencies
-            base_price_usd = random.uniform(10, 5000)
+            # Generate prices in multiple currencies based on category
+            # Get category name from the product
+            category_name = prod.get('category_name', '')
+            
+            # Category-based pricing ranges
+            if 'Electronics' in category_name:
+                base_price_usd = random.uniform(50, 2500)  # $50-$2500 for electronics
+            elif 'Industrial' in category_name:
+                base_price_usd = random.uniform(200, 5000)  # $200-$5000 for industrial equipment
+            elif 'Office Supplies' in category_name:
+                base_price_usd = random.uniform(1, 100)  # $1-$100 for office supplies
+            elif 'Furniture' in category_name:
+                base_price_usd = random.uniform(50, 1500)  # $50-$1500 for furniture
+            elif 'Medical' in category_name:
+                base_price_usd = random.uniform(100, 3000)  # $100-$3000 for medical devices
+            elif 'Automotive' in category_name:
+                base_price_usd = random.uniform(20, 1000)  # $20-$1000 for auto parts
+            elif 'Food' in category_name:
+                base_price_usd = random.uniform(2, 50)  # $2-$50 for food items
+            elif 'Chemicals' in category_name:
+                base_price_usd = random.uniform(10, 500)  # $10-$500 for chemicals
+            elif 'Textiles' in category_name:
+                base_price_usd = random.uniform(5, 200)  # $5-$200 for textiles
+            elif 'Construction' in category_name:
+                base_price_usd = random.uniform(10, 1000)  # $10-$1000 for construction materials
+            else:
+                base_price_usd = random.uniform(10, 500)  # $10-$500 default range
             
             # Price in USD
             prices.append((real_id, 'USD', round(base_price_usd, 2), self.config.start_date, None))
