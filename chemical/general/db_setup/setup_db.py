@@ -19,7 +19,10 @@ CREATE TABLE IF NOT EXISTS test_runs (
     test_suite VARCHAR(50),
     total_tests INTEGER DEFAULT 0,
     passed_tests INTEGER DEFAULT 0,
-    failed_tests INTEGER DEFAULT 0
+    failed_tests INTEGER DEFAULT 0,
+    model_id VARCHAR(255),
+    model_api_base VARCHAR(255),
+    model_temperature VARCHAR(10)
 );
 
 -- Test results table (one row per test)
