@@ -3,6 +3,7 @@
 .docker.env
 *.csv
 report.json
+litellm_config.yaml
 
 */pgdata/
 */qdrant_storage/
